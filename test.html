@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Green Button Viewer — Test Harness</title>
+  <link rel="stylesheet" href="styles.css">
+  <style>
+    #test-banner {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 9000;
+      background: #1a202c;
+      color: #fbbf24;
+      font-size: 0.8rem;
+      font-family: monospace;
+      padding: 0.35rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    #test-banner strong { color: #fff; }
+    #test-status { margin-left: auto; }
+    body { padding-top: 30px; }
+  </style>
+</head>
+<body>
+
+  <div id="test-banner">
+    <strong>TEST HARNESS</strong>
+    — Auto-loads synthetic 2024 Ontario electricity data
+    <span id="test-status">Loading…</span>
+  </div>
+
+  <!-- ===== UPLOAD SCREEN ===== -->
+  <div id="upload-screen" class="screen active">
+    <div class="upload-hero">
+      <div class="upload-logo">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <polyline points="13 2 13 9 20 9"/>
+          <line x1="12" y1="18" x2="12" y2="12"/>
+          <polyline points="9 15 12 12 15 15"/>
+        </svg>
+      </div>
+      <h1>Green Button Energy Viewer</h1>
+      <p class="upload-subtitle">Loading synthetic test data…</p>
+      <div id="upload-error" class="error-banner hidden" role="alert"></div>
+    </div>
+  </div>
+
+  <!-- ===== APP SCREEN ===== -->
+  <div id="app-screen" class="screen">
+
+    <header class="app-header">
+      <div class="app-header-left">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <polyline points="13 2 13 9 20 9"/>
+          <path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+        </svg>
+        <span class="app-title">Green Button Energy Viewer <em style="font-weight:400;color:#718096">[Synthetic Data]</em></span>
+      </div>
+      <div class="app-header-right">
+        <span id="header-date-range" class="header-date-range"></span>
+        <button id="reset-btn" class="btn-ghost">Load new file</button>
+      </div>
+    </header>
+
+    <nav class="tab-nav" role="tablist" aria-label="Views">
+      <button class="tab-btn active" data-tab="dashboard" role="tab" aria-selected="true">Dashboard</button>
+      <button class="tab-btn" data-tab="hourly"    role="tab" aria-selected="false">Hourly / Daily</button>
+      <button class="tab-btn" data-tab="monthly"   role="tab" aria-selected="false">Monthly Billing</button>
+      <button class="tab-btn" data-tab="tou"       role="tab" aria-selected="false">Time of Use</button>
+      <button class="tab-btn" data-tab="cost"      role="tab" aria-selected="false">Cost Analysis</button>
+    </nav>
+
+    <main class="tab-content">
+
+      <!-- DASHBOARD -->
+      <section id="tab-dashboard" class="tab-panel active" role="tabpanel">
+        <div class="kpi-grid" id="kpi-grid-dashboard">
+          <div class="kpi-card" id="kpi-total-kwh"><div class="kpi-label">Total Usage</div><div class="kpi-value">—</div><div class="kpi-sub"></div></div>
+          <div class="kpi-card" id="kpi-total-cost"><div class="kpi-label">Total Billed</div><div class="kpi-value">—</div><div class="kpi-sub"></div></div>
+          <div class="kpi-card" id="kpi-avg-daily"><div class="kpi-label">Avg Daily Usage</div><div class="kpi-value">—</div><div class="kpi-sub"></div></div>
+          <div class="kpi-card" id="kpi-peak-day"><div class="kpi-label">Highest Day</div><div class="kpi-value">—</div><div class="kpi-sub"></div></div>
+          <div class="kpi-card" id="kpi-date-range"><div class="kpi-label">Data Period</div><div class="kpi-value kpi-value--sm">—</div><div class="kpi-sub"></div></div>
+          <div class="kpi-card" id="kpi-months"><div class="kpi-label">Billing Months</div><div class="kpi-value">—</div><div class="kpi-sub"></div></div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-card chart-card--wide">
+            <h2 class="chart-title">Daily Consumption &amp; Cost</h2>
+            <div class="chart-wrap chart-wrap--tall"><canvas id="chart-dashboard-daily"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h2 class="chart-title">Usage by TOU Tier</h2>
+            <div class="chart-wrap"><canvas id="chart-dashboard-tou-pie"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HOURLY / DAILY -->
+      <section id="tab-hourly" class="tab-panel" role="tabpanel">
+        <div class="controls-bar">
+          <label class="control-label">View: <select id="hourly-view-select" class="control-select"><option value="daily">Daily totals</option><option value="heatmap">Hourly heatmap</option></select></label>
+          <label class="control-label" id="hourly-range-label">Range: <select id="hourly-range-select" class="control-select"><option value="all">All time</option><option value="90">Last 90 days</option><option value="30">Last 30 days</option><option value="7">Last 7 days</option></select></label>
+        </div>
+        <div class="chart-card chart-card--full" id="hourly-bar-card">
+          <h2 class="chart-title" id="hourly-bar-title">Daily Consumption (kWh)</h2>
+          <div class="chart-wrap chart-wrap--tall"><canvas id="chart-hourly-bar"></canvas></div>
+        </div>
+        <div class="chart-card chart-card--full" id="hourly-heatmap-card" style="display:none">
+          <h2 class="chart-title">Hourly Consumption Heatmap</h2>
+          <p class="chart-subtitle">Each cell = 1 hour. Color intensity = kWh consumed.</p>
+          <div class="heatmap-wrap"><canvas id="chart-hourly-heatmap"></canvas></div>
+          <div id="heatmap-tooltip" class="heatmap-tooltip" style="display:none"></div>
+        </div>
+      </section>
+
+      <!-- MONTHLY BILLING -->
+      <section id="tab-monthly" class="tab-panel" role="tabpanel">
+        <div class="chart-row">
+          <div class="chart-card chart-card--wide">
+            <h2 class="chart-title">Monthly Consumption (kWh)</h2>
+            <div class="chart-wrap"><canvas id="chart-monthly-kwh"></canvas></div>
+          </div>
+          <div class="chart-card">
+            <h2 class="chart-title">Monthly Bill ($)</h2>
+            <div class="chart-wrap"><canvas id="chart-monthly-cost"></canvas></div>
+          </div>
+        </div>
+        <div class="table-card">
+          <h2 class="chart-title">Bill Breakdown by Month</h2>
+          <div class="table-wrap">
+            <table id="monthly-breakdown-table" class="data-table">
+              <thead><tr><th>Month</th><th class="num">Usage (kWh)</th><th class="num">Energy</th><th class="num">Delivery</th><th class="num">Regulatory</th><th class="num">HST</th><th class="num">OER Rebate</th><th class="num">Total Bill</th></tr></thead>
+              <tbody></tbody>
+              <tfoot><tr id="monthly-table-total"><td><strong>Total</strong></td><td class="num" id="tbl-total-kwh"></td><td class="num" id="tbl-total-energy"></td><td class="num" id="tbl-total-delivery"></td><td class="num" id="tbl-total-regulatory"></td><td class="num" id="tbl-total-hst"></td><td class="num" id="tbl-total-rebate"></td><td class="num" id="tbl-total-bill"></td></tr></tfoot>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- TIME OF USE -->
+      <section id="tab-tou" class="tab-panel" role="tabpanel">
+        <div class="kpi-grid kpi-grid--tou">
+          <div class="kpi-card kpi-card--peak" id="kpi-tou-peak"><div class="kpi-label">Peak Usage</div><div class="kpi-value">—</div><div class="kpi-sub">11am – 5pm weekdays</div></div>
+          <div class="kpi-card kpi-card--mid"  id="kpi-tou-mid"><div class="kpi-label">Mid-Peak Usage</div><div class="kpi-value">—</div><div class="kpi-sub">7–11am &amp; 5–7pm weekdays</div></div>
+          <div class="kpi-card kpi-card--off"  id="kpi-tou-off"><div class="kpi-label">Off-Peak Usage</div><div class="kpi-value">—</div><div class="kpi-sub">7pm – 7am &amp; weekends</div></div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-card"><h2 class="chart-title">TOU Distribution — kWh</h2><div class="chart-wrap"><canvas id="chart-tou-donut"></canvas></div></div>
+          <div class="chart-card"><h2 class="chart-title">TOU Distribution — Cost</h2><div class="chart-wrap"><canvas id="chart-tou-cost-donut"></canvas></div></div>
+        </div>
+        <div class="chart-card chart-card--full">
+          <h2 class="chart-title">Monthly TOU Breakdown</h2>
+          <div class="chart-wrap"><canvas id="chart-tou-monthly-stacked"></canvas></div>
+        </div>
+      </section>
+
+      <!-- COST ANALYSIS -->
+      <section id="tab-cost" class="tab-panel" role="tabpanel">
+        <div class="chart-card chart-card--full">
+          <h2 class="chart-title">Daily Cost Over Time</h2>
+          <div class="chart-wrap chart-wrap--tall"><canvas id="chart-cost-daily"></canvas></div>
+        </div>
+        <div class="chart-row">
+          <div class="chart-card"><h2 class="chart-title">Effective Rate by TOU Tier</h2><p class="chart-subtitle">Weighted average cents per kWh consumed</p><div class="chart-wrap"><canvas id="chart-cost-rate-bar"></canvas></div></div>
+          <div class="chart-card"><h2 class="chart-title">Cumulative Cost</h2><div class="chart-wrap"><canvas id="chart-cost-cumulative"></canvas></div></div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js"></script>
+  <script src="synthetic-data.js"></script>
+  <script src="app.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const status = document.getElementById('test-status');
+      try {
+        const t0 = performance.now();
+        const xml = generateSyntheticGreenButtonXML();
+        const t1 = performance.now();
+        window.processXML(xml);
+        const t2 = performance.now();
+        status.textContent = `Generated in ${(t1-t0).toFixed(0)}ms, rendered in ${(t2-t1).toFixed(0)}ms`;
+        status.style.color = '#86efac';
+      } catch (e) {
+        status.textContent = 'ERROR: ' + e.message;
+        status.style.color = '#fca5a5';
+        console.error(e);
+      }
+    });
+  </script>
+</body>
+</html>
